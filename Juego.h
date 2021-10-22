@@ -270,6 +270,12 @@ int juego() {
 			}
 
 		}
+		if (eventos.type == ALLEGRO_EVENT_KEY_DOWN)
+		{
+			if (ALLEGRO_KEY_ESCAPE) {
+				hecho = false;
+			}
+		}
 
 	}
 
