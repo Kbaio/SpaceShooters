@@ -18,75 +18,276 @@
 
 using namespace std;
 
-//OBJETO PERSONAJE
-struct Personaje {
+typedef struct Nave {
 	int x;
 	int y;
-	Personaje() {
+	int vida;
+	int velocidad;
+	int aux; //Tipo de enemigo (1,2,3) o cantidad de disparos realizados por el jugador
+	Nave* siguiente;
+}*PtrNave;
 
-	}
-	Personaje(int _x, int _y) {
-		x = _x;
-		y = _y;
+typedef struct Bala {
+	int x;
+	int y;
+	int velocidad;
+	bool direccion;
+	bool activa;
+	Bala* siguiente;
+}*PtrBala;
 
-	}
-};
+
 
 //Globales
 //**********************************************************
-enum Direccion { UP, DOWN, RIGHT, LEFT };
 
-bool teclasDireccion[4] = { false, false, false, false }; //!
-Personaje* personajeP;
-Personaje* enemigoP;
-bool sentido = 0;
-#define FPS 60.0
+#define FPS 30.0
 
 
 //Elementos de allegro que se utilizarán para el juego
 //**********************************************************
 ALLEGRO_DISPLAY* pantalla;
-ALLEGRO_COLOR transparente;
 
-ALLEGRO_BITMAP* personaje; //CONTIENE LAS IMAGENES
-ALLEGRO_BITMAP* enemigo;
+ALLEGRO_BITMAP* jugador;
+ALLEGRO_BITMAP* jugadorIzq;
+ALLEGRO_BITMAP* jugadorDer;
+ALLEGRO_BITMAP* balaJugador;
+ALLEGRO_BITMAP* enemigo1;
+ALLEGRO_BITMAP* enemigo2;
+ALLEGRO_BITMAP* enemigo3;
+ALLEGRO_BITMAP* explosion0;
+ALLEGRO_BITMAP* explosion1;
+ALLEGRO_BITMAP* explosion2;
+ALLEGRO_BITMAP* vida;
 ALLEGRO_BITMAP* fondo;
 
-ALLEGRO_SAMPLE* musica;
-ALLEGRO_FONT* fuente;
+//ALLEGRO_SAMPLE* musica;
+//ALLEGRO_FONT* fuente;
 
-//FUNCIONES MOVIMIENTO
+//Funcion para pruebas
+void PrintBalas(PtrBala& Lista) {
+	PtrBala Aux = Lista;
+	int cont = 0;
+	while (Aux != NULL) {
+		cont++;
+		cout << endl << "Bala " << cont << " " << Aux->x << " " << Aux->y << endl;
+		Aux = Aux->siguiente;
+	}
+}
 
-void moverPersonaje(int movimiento) {
-	if (teclasDireccion[DOWN]) {
-		if (personajeP->y < (900 - 30)) personajeP->y += movimiento;
-	}
-	if (teclasDireccion[UP]) {
-		if (personajeP->y > 60 + 10) personajeP->y -= movimiento;
-	}
-	if (teclasDireccion[RIGHT]) {
-		if (personajeP->x < (1500 - 30)) personajeP->x += movimiento;
-		sentido = true;
-	}
-	if (teclasDireccion[LEFT]) {
-		if (personajeP->x > 500) personajeP->x -= movimiento;
-		sentido = false;
-	}
+PtrNave iniciarJugador(int RX, int RY) {
+	PtrNave nave = new (Nave);
+	nave->x = RX / 2;
+	nave->y = (RY / 3) * 2;
+	nave->aux = 0;
+	nave->vida = 3;
+	nave->velocidad = 10;
+	nave->siguiente = NULL;
+	return nave;
+}
 
+PtrNave crearEnemigo(int RX, int RY, int n) {
+	PtrNave nave = new (Nave);
+	nave->x = RX / 2;
+	nave->y = 100;
+	nave->aux = n;
+	nave->vida = 1;
+	nave->velocidad = 10;
+	nave->siguiente = NULL;
+	return nave;
+}
+
+PtrBala crearBala(int x, int y) {
+	PtrBala bala = new (Bala);
+	bala->x = x;
+	bala->y = y;
+	bala->velocidad = 20;
+	bala->direccion = true;
+	bala->activa = true;
+	bala->siguiente = NULL;
+	return bala;
+}
+
+void AgregarInicioBala(PtrBala& Lista, PtrBala& Nuevo) {
+	Nuevo->siguiente = Lista;
+	Lista = Nuevo;
+}
+
+void AgregarInicioEnemigo(PtrNave& Lista, PtrNave& Nuevo) {
+	Nuevo->siguiente = Lista;
+	Lista = Nuevo;
+}
+
+void EliminarBalasInactivas(PtrBala& Lista) {
+	PtrBala Aux;	
+	PtrBala temp;	
+	Aux = Lista; 
+	while (Aux != NULL) { 
+		if (Aux->siguiente != NULL) {
+			if (!Aux->siguiente->activa) {
+				temp = Aux->siguiente;
+				Aux->siguiente = temp->siguiente;
+				delete(temp);
+				temp = NULL;
+			}
+			else
+				Aux = Aux->siguiente;
+		}
+		else
+			Aux = Aux->siguiente;
+	}
+}
+
+void EliminarEnemigosInactivos(PtrNave& Lista) {
+	PtrNave Aux;
+	PtrNave temp;
+	Aux = Lista;
+	while (Aux != NULL) {
+		if (Aux->siguiente != NULL) {
+			if (Aux->siguiente->vida<-24) {
+				temp = Aux->siguiente;
+				Aux->siguiente = temp->siguiente;
+				delete(temp);
+				temp = NULL;
+			}
+			else
+				Aux = Aux->siguiente;
+		}
+		else
+			Aux = Aux->siguiente;
+	}
+}
+
+void DestruirBalas(PtrBala& Lista) {
+	PtrBala Aux = Lista;
+	while (Aux != NULL) {
+		Lista = Lista->siguiente; 
+		delete(Aux); 
+		Aux = Lista;
+	}
+}
+
+void DestruirEnemigos(PtrNave& Lista) {
+	PtrNave Aux = Lista;
+	while (Aux != NULL) {
+		Lista = Lista->siguiente;
+		delete(Aux);
+		Aux = Lista;
+	}
 }
 
 
-void iniciarPersonaje(int x, int y) {
-	personajeP = new Personaje(x, y);
+bool Colision(int xBala, int yBala, int xNave, int yNave, int ancho, int alto) {
+	//al_draw_rectangle(xNave, yNave, xNave + ancho, yNave + alto, al_map_rgb(255, 255, 255), 3); //Dibujar Hitbox Nave
+	if (xBala + 12 > xNave && xBala + 12 < xNave + ancho && yBala < yNave + alto && yBala > yNave){
+		return true;
+	}
+	return false;
 }
 
-//iniciarPersonaje: CREA LAS VARIABLES ANONIMAS DEL PERSONAJE Y EL ENEMIGO
 
+void MoverBalas(PtrBala& Lista, PtrNave& ListaEnemigos) {
+	PtrBala Aux = Lista;
+	PtrNave AuxEnemigos;
+	bool colision = false;
+	while (Aux != NULL) {
+		if (Aux->activa) {
+			Aux->y = Aux->y - 15;
+			if (Aux->y < 0) 
+				Aux->activa = false;
+			else {
+				AuxEnemigos = ListaEnemigos;
+				while (AuxEnemigos != NULL) {
+					if (AuxEnemigos->vida == 1) {
+						switch (AuxEnemigos->aux) {
+						case 1:
+							if (Colision(Aux->x, Aux->y, AuxEnemigos->x - 10, AuxEnemigos->y + 20, 110, 53)) {
+								AuxEnemigos->vida = AuxEnemigos->vida - 1;
+								Aux->activa = false;
+							}
+							break;
+						case 2:
+							if (Colision(Aux->x, Aux->y, AuxEnemigos->x - 10, AuxEnemigos->y + 20, 108, 47)) {
+								AuxEnemigos->vida = AuxEnemigos->vida - 1;
+								Aux->activa = false;
+							}
+							break;
+						case 3:
+							if (Colision(Aux->x, Aux->y, AuxEnemigos->x - 8, AuxEnemigos->y + 10, 117, 37)) {
+								AuxEnemigos->vida = AuxEnemigos->vida - 1;
+								Aux->activa = false;
+							}
+							break;
+						}
+					}
+					AuxEnemigos = AuxEnemigos->siguiente;
+				}
+
+				al_draw_bitmap(balaJugador, Aux->x, Aux->y, NULL);
+				//al_draw_rectangle(Aux->x, Aux->y, Aux->x + 23, Aux->y + 23, al_map_rgb(255, 255, 255), 3);
+			}
+		}
+		Aux = Aux->siguiente;
+	}
+}
+
+void DibujarHUD(int ptsvida) {
+	if (ptsvida = 3) {
+		al_draw_bitmap(vida, 60, 20, NULL);
+		al_draw_bitmap(vida, 100, 20, NULL);
+	}
+	else if (ptsvida = 2)
+		al_draw_bitmap(vida, 60, 20, NULL);
+	al_draw_bitmap(vida, 20, 20, NULL);
+
+	//Imprimir Puntuacion
+}
+
+void dibujarEnemigo(int x, int y, int n, int& vida) {
+	if (vida == 1) {
+		switch (n) {
+		case 1:
+			al_draw_bitmap(enemigo1, x, y, NULL);
+			break;
+		case 2:
+			al_draw_bitmap(enemigo2, x, y, NULL);
+			break;
+		case 3:
+			al_draw_bitmap(enemigo3, x, y, NULL);
+			break;
+		}
+	}	
+	else { //Dibujar Explosion
+		if (vida < 1 && vida >= -8) {
+			al_draw_bitmap(explosion0, x, y, NULL);
+		}else if (vida < -8 && vida >= -16) {
+			al_draw_bitmap(explosion1, x, y, NULL);
+		}else if (vida < -16 && vida >= -24) {
+			al_draw_bitmap(explosion2, x, y, NULL);
+		}
+		vida--;
+	}
+}
+
+void DibujarEnemigos(PtrNave Lista) {
+	PtrNave Aux = Lista;
+	while (Aux != NULL) {
+		dibujarEnemigo(Aux->x, Aux->y, Aux->aux, Aux->vida);
+		Aux = Aux->siguiente;
+	}
+}
 
 //DIBUJAR EL PERSONAJE EN EL DISPLAY
-void dibujarPrincipal(int x, int y) {
-	al_draw_bitmap(personaje, x, y, NULL);
-	al_flip_display();
+void dibujarJugador(int x, int y) {
+	al_draw_bitmap(jugador, x, y, NULL);
+}
+
+void dibujarJugadorIzq(int x, int y) {
+	al_draw_bitmap(jugadorIzq, x, y, NULL);
+}
+
+void dibujarJugadorDer(int x, int y) {
+	al_draw_bitmap(jugadorDer, x, y, NULL);
 }
 
 
@@ -95,7 +296,6 @@ int juego() {
 		fprintf(stderr, "No se puede iniciar allegro!\n");
 		return -1;
 	}
-	int movimiento = 5;
 
 
 	//---------------------------------------
@@ -103,15 +303,13 @@ int juego() {
 	al_get_monitor_info(0, &monitor);
 	const int RX = monitor.x2 - monitor.x1;
 	const int RY = monitor.y2 - monitor.y1;
-
 	int movF = 0;
 	//---------------------------------------
 
 	//Esta línea de código permite que la ventana tenga la capacidad de cambiar de tamaño
 	al_set_new_display_flags(ALLEGRO_WINDOWED | ALLEGRO_RESIZABLE | ALLEGRO_FULLSCREEN);
-
+	//al_set_new_display_flags(ALLEGRO_WINDOWED | ALLEGRO_RESIZABLE);
 	pantalla = al_create_display(RX, RY);
-	//al_set_window_position(pantalla, 200, 200);
 	al_set_window_title(pantalla, "Space Shooters");
 	if (!pantalla) {
 		fprintf(stderr, "No se puede crear la pantalla!\n");
@@ -130,21 +328,30 @@ int juego() {
 
 	//Se crean los contenedores de las imágenes que se utilizarán en el juego
 	//*******************
-	personaje = al_load_bitmap("Imagenes/NaveAliada.png");
-	enemigo = al_load_bitmap("Imagenes/enemigo.png");
-	fondo = al_load_bitmap("Imagenes/Fondo.png");
+	jugador = al_load_bitmap("Imagenes/Nave/nave.png");
+	jugadorIzq = al_load_bitmap("Imagenes/Nave/naveIzquierda.png");
+	jugadorDer = al_load_bitmap("Imagenes/Nave/naveDerecha.png");
+	balaJugador = al_load_bitmap("Imagenes/Bala/balaJugador.png");
+	enemigo1 = al_load_bitmap("Imagenes/Enemigos/enemigo1.png");
+	enemigo2 = al_load_bitmap("Imagenes/Enemigos/enemigo2.png");
+	enemigo3 = al_load_bitmap("Imagenes/Enemigos/enemigo3.png");
+	explosion0 = al_load_bitmap("Imagenes/Explosion/explosion0.png");
+	explosion1 = al_load_bitmap("Imagenes/Explosion/explosion1.png");
+	explosion2 = al_load_bitmap("Imagenes/Explosion/explosion2.png");
+	vida = al_load_bitmap("Imagenes/HUD/corazon.png");
+	fondo = al_load_bitmap("Imagenes/HUD/Fondo.png");
 	//*******************
 
 	//Líneas para obtener las funcionalidades de los audios
 	//*******************
 	al_install_audio();
 	al_init_acodec_addon();
-	al_reserve_samples(1000);
+	al_reserve_samples(1);
 	//*******************
 
 	//Se cargan los audios que se van a utilizar en el juego
 	//*******************
-	musica = al_load_sample("Musica/Musica.ogg");
+	//musica = al_load_sample("Musica/Musica.ogg");
 
 	//*******************
 
@@ -157,9 +364,9 @@ int juego() {
 
 	//Timers que se necesitarán para el juego
 	//**********************************************************
-	ALLEGRO_TIMER* primerTimer = al_create_timer(1.0 / FPS);
-	ALLEGRO_TIMER* segundoTimer = al_create_timer(1 / FPS);
-	ALLEGRO_TIMER* tercerTimer = al_create_timer(1.0 / FPS);
+	ALLEGRO_TIMER* TimerFrames = al_create_timer(1.0 / FPS);
+	ALLEGRO_TIMER* TimerBalasInactivas = al_create_timer(10);	//Timer que indica cuando eliminar de la lista las balas inactivas
+	ALLEGRO_TIMER* TimerEnemigosInactivos = al_create_timer(20); //Timer que indica cuando eliminar de la lista los enemigos eliminados
 	//**********************************************************
 
 	//Se crea una cola de eventos
@@ -167,112 +374,148 @@ int juego() {
 
 	//Registro de los eventos
 	//**********************************************************
-	al_register_event_source(colaEventos, al_get_timer_event_source(primerTimer));
-	al_register_event_source(colaEventos, al_get_timer_event_source(segundoTimer));
-	al_register_event_source(colaEventos, al_get_timer_event_source(tercerTimer));
+	al_register_event_source(colaEventos, al_get_timer_event_source(TimerFrames));
+	al_register_event_source(colaEventos, al_get_timer_event_source(TimerBalasInactivas));
+	al_register_event_source(colaEventos, al_get_timer_event_source(TimerEnemigosInactivos));
 	al_register_event_source(colaEventos, al_get_keyboard_event_source());
 	//**********************************************************
 
-	//Inicialización de los timer
-	//**********************************************************
-	al_start_timer(primerTimer);
-	al_start_timer(segundoTimer);
-	al_start_timer(tercerTimer);
 	//**********************************************************
 	bool hecho = true;
-	iniciarPersonaje(RX / 2, RY / 2);
+	int velocidad = 10;
+	PtrNave Jugador = iniciarJugador(RX, RY);
+	PtrNave Enemigos = NULL;
+	PtrBala Balas = NULL;
+	PtrBala bala =	NULL;
+
+	PtrNave enemigo = crearEnemigo(300, 100, 1);
+	AgregarInicioEnemigo(Enemigos, enemigo);
+	enemigo = crearEnemigo(600, 100, 2);
+	AgregarInicioEnemigo(Enemigos, enemigo);
+	enemigo = crearEnemigo(900, 100, 3);
+	AgregarInicioEnemigo(Enemigos, enemigo);
 
 	ALLEGRO_KEYBOARD_STATE estadoTeclado;
+	ALLEGRO_EVENT eventos;
 
-	al_get_keyboard_state(&estadoTeclado);
+
+	//Inicialización de los timer
+	//**********************************************************
+	al_start_timer(TimerBalasInactivas);
+	al_start_timer(TimerFrames);
+	al_start_timer(TimerEnemigosInactivos);
 
 	while (hecho) {
 
-		ALLEGRO_EVENT eventos;
-
 		al_wait_for_event(colaEventos, &eventos);
 
-
-		/*Evento que toma en cuenta la tecla más actual presionada, se van activando en un array que representa cada movimiento
-		Observación: Si se presiona una segunda tecla, al mismo tiempo que se está presionando la primera, este evento será capaz de detectar las dos teclas
-		y representarlas en el array de activación (teclas)
-		*/
-		if (eventos.type == ALLEGRO_EVENT_KEY_DOWN) {
-			switch (eventos.keyboard.keycode) {
-
-			case ALLEGRO_KEY_DOWN:
-				teclasDireccion[DOWN] = true;
-				break;
-
-			case ALLEGRO_KEY_UP:
-				teclasDireccion[UP] = true;
-				break;
-
-			case ALLEGRO_KEY_RIGHT:
-				teclasDireccion[RIGHT] = true;
-				break;
-
-			case ALLEGRO_KEY_LEFT:
-				teclasDireccion[LEFT] = true;
-				break;
-
-
-			}
-
-		}
-		/*Evento que toma en cuenta cuando se deja de presionar alguna tecla, funciona de la misma forma que el evento anterior, cuando se deja de presionar una
-		tecla, se desactiva del array de activación (teclas)
-		*/
-		if (eventos.type == ALLEGRO_EVENT_KEY_UP) {
-			switch (eventos.keyboard.keycode) {
-
-			case ALLEGRO_KEY_DOWN:
-				teclasDireccion[DOWN] = false;
-				break;
-
-			case ALLEGRO_KEY_UP:
-				teclasDireccion[UP] = false;
-				break;
-
-			case ALLEGRO_KEY_RIGHT:
-				teclasDireccion[RIGHT] = false;
-				break;
-
-			case ALLEGRO_KEY_LEFT:
-				teclasDireccion[LEFT] = false;
-				break;
-
-
-			case ALLEGRO_KEY_ESCAPE:
-				hecho = true;
-				break;
-			}
-
-		}
 		if (eventos.type == ALLEGRO_EVENT_TIMER) {
-			if (eventos.timer.source == primerTimer) {
-				moverPersonaje(movimiento);
+
+			if (eventos.timer.source == TimerFrames) {
 
 				al_draw_scaled_bitmap(fondo, 0, movF, 1920, 1080, 0, 0, RX, RY, NULL);
 				if (movF == 0) {
 					movF = 1080;
 				}
 				movF--;
+				MoverBalas(Balas, Enemigos);
+				
+
+				al_get_keyboard_state(&estadoTeclado);	//Revisa el estado del teclado y mueve al personaje
+				dibujarJugador(Jugador->x, Jugador->y);
+				if (al_key_down(&estadoTeclado, ALLEGRO_KEY_DOWN)) {
+					if (Jugador->y < (RY - 80)) Jugador->y += velocidad;
+				}
+				if (al_key_down(&estadoTeclado, ALLEGRO_KEY_UP)) {
+					if (Jugador->y > RY / 2) Jugador->y -= velocidad;
+				}
+				if (al_key_down(&estadoTeclado, ALLEGRO_KEY_RIGHT)) {
+					if (Jugador->x < (RX - 120)) Jugador->x += velocidad;
+					dibujarJugadorDer(Jugador->x, Jugador->y);
+				}
+				if (al_key_down(&estadoTeclado, ALLEGRO_KEY_LEFT)) {
+					if (Jugador->x > 9) Jugador->x -= velocidad;
+					dibujarJugadorIzq(Jugador->x, Jugador->y);
+				}
+
+				DibujarEnemigos(Enemigos);
+				DibujarHUD(Jugador->vida);
+				al_flip_display();
+
 			}
-
-			/*else if (eventos.timer.source == segundoTimer) {
-				moverEnemigo(movimiento);
-
-			}*/
-			else if (eventos.timer.source == tercerTimer) {
-				dibujarPrincipal(personajeP->x, personajeP->y);
-				//dibujarEnemigo(enemigoP->x, enemigoP->y);
+			else if (eventos.timer.source == TimerBalasInactivas) {
+				//cout << "inicio balas: ";
+				//PrintBalas(Balas);
+				EliminarBalasInactivas(Balas);
+				//cout << "final balas: ";
+				//PrintBalas(Balas);
+			}else if (eventos.timer.source == TimerEnemigosInactivos) {
+				EliminarEnemigosInactivos(Enemigos);
 			}
+			/*
+			else if (eventos.timer.source == timerEnemigo) {
+				direccionEnemigo[direccion] = false;
+				switch (rand() % 4) {			//Cambia de direcion al enemigo
+				case UP:
+					direccionEnemigo[UP] = true;
+					direccion = UP;
+					break;
 
+				case DOWN:
+					direccionEnemigo[DOWN] = true;
+					direccion = DOWN;
+					break;
+
+				case RIGHT:
+					direccionEnemigo[RIGHT] = true;
+					direccion = RIGHT;
+					break;
+
+				case LEFT:
+					direccionEnemigo[LEFT] = true;
+					direccion = LEFT;
+					break;
+				}
+			}
+			*/
 		}
 
-	}
+		else if (eventos.type == ALLEGRO_EVENT_KEY_UP) {		//ESCAPE para cerrar el programa
+			switch (eventos.keyboard.keycode) {
+			case ALLEGRO_KEY_SPACE:
+				bala = crearBala(Jugador->x + 44, Jugador->y - 20);
+				AgregarInicioBala(Balas, bala);
+				Jugador->aux++;	//Estadistica
+				break;
+			case ALLEGRO_KEY_ESCAPE:
+				hecho = false;
+				break;
+			}
+		}
 
+		al_clear_to_color(al_map_rgb(0, 0, 0));		//Limpia el display
+		
+
+	}
+	al_destroy_timer(TimerFrames);
+	al_destroy_timer(TimerBalasInactivas);
+	al_destroy_timer(TimerEnemigosInactivos);
+	al_destroy_event_queue(colaEventos);
+	al_destroy_display(pantalla);
+	al_destroy_bitmap(jugador);
+	al_destroy_bitmap(jugadorIzq);
+	al_destroy_bitmap(jugadorDer);
+	al_destroy_bitmap(enemigo1);
+	al_destroy_bitmap(enemigo2);
+	al_destroy_bitmap(enemigo3);
+	al_destroy_bitmap(explosion0);
+	al_destroy_bitmap(explosion1);
+	al_destroy_bitmap(explosion2);
+	al_destroy_bitmap(balaJugador);
+	al_destroy_bitmap(vida);
+	al_destroy_bitmap(fondo);
+	DestruirBalas(Balas);
+	DestruirEnemigos(Enemigos);
 
 
 }
