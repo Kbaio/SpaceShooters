@@ -1,54 +1,7 @@
 #include "Juego.h"
+#include "Funciones.h"
 using namespace std;
 #define FPS 60.0
-
-bool posicionMouse(int X, int Y,int varX, float varY1,float varY2 ,int mousex,int mousey) {
-	if ((mousex >= X / 2 - varX && mousex <= X / 2 + varX) && (mousey >= (Y * (varY1 / 768.0)) && mousey <= (Y * (varY2 / 768.0)))) {
-		return true;
-	}
-	return false;
-}
-
-void mostrarInstrucciones(ALLEGRO_TIMER *timer1,ALLEGRO_EVENT_QUEUE *cola_eventos,ALLEGRO_BITMAP *fondo,ALLEGRO_FONT *titulo,ALLEGRO_FONT *fuente,int X,int Y, ALLEGRO_SAMPLE *seleccion){
-	ALLEGRO_EVENT eventos;
-	ALLEGRO_BITMAP* instrucciones = al_load_bitmap("Imagenes/Instrucciones.png");
-	int movF = 0;
-	int mousex = 0;
-	int mousey = 0;
-	bool estado = true;
-	while (estado) {
-		al_wait_for_event(cola_eventos, &eventos);
-		if(eventos.type == ALLEGRO_EVENT_TIMER){
-			if (eventos.timer.source == timer1) {
-				al_clear_to_color(al_map_rgb(0, 0, 0));
-				al_draw_scaled_bitmap(fondo, 0, movF, X, Y, 0, 0, X, Y, NULL);
-				if (movF == 0) {
-					movF = 1080;
-				}
-				movF--;
-				al_draw_text(titulo, al_map_rgb(250, 250, 15), X / 2, (Y * (150.0 / 768.0)), ALLEGRO_ALIGN_CENTRE, "SPACE SHOOTERS");
-				al_draw_text(fuente, al_map_rgb(250, 15, 250), X / 2, (Y * (250.0 / 768.0)), ALLEGRO_ALIGN_CENTRE, "INSTRUCCIONES");
-				al_draw_bitmap(instrucciones, X / 2 - 200, (Y * (350 / 768.0)), NULL);
-				al_draw_text(fuente, al_map_rgb(250, 250, 250), X / 2, (Y * (550.0 / 768.8)), ALLEGRO_ALIGN_CENTER, "ATRAS");
-			}
-		}
-		if (eventos.type == ALLEGRO_EVENT_MOUSE_AXES)
-		{
-			mousex = eventos.mouse.x;
-			mousey = eventos.mouse.y;
-		}
-		if (posicionMouse(X,Y,100,540.0,580.0,mousex,mousey)) {
-			al_draw_text(fuente, al_map_rgb(250, 250, 15), X / 2, (Y * (550.0 / 768.8)), ALLEGRO_ALIGN_CENTER, "ATRAS");
-			if (eventos.type == ALLEGRO_EVENT_MOUSE_BUTTON_UP) {
-				al_play_sample(seleccion, 1.0, 0, 1.0, ALLEGRO_PLAYMODE_ONCE, 0);
-				estado = false;
-			}
-		}
-		al_flip_display();
-	}
-
-}
-
 
 
 int main() {
@@ -126,8 +79,7 @@ int main() {
 		al_wait_for_event(cola_eventos, &eventos);
 		if (eventos.type == ALLEGRO_EVENT_MOUSE_AXES)
 		{
-			mousex = eventos.mouse.x;
-			mousey = eventos.mouse.y;
+			get_Mouse(eventos, mousex, mousey);
 		}
 		if (eventos.type == ALLEGRO_EVENT_TIMER)
 		{
@@ -146,10 +98,12 @@ int main() {
 				al_draw_text(fuente, al_map_rgb(250, 250, 250), X / 2, (Y * (550.0 / 768.0)), ALLEGRO_ALIGN_CENTRE, "SALIR"); //550
 			}
 		}
+
 		//Si se presiona Jugar
-		if(posicionMouse(X,Y,100,240.0,280.0,mousex,mousey)) {
+		if(mouse_Range(X,Y,100,240.0,280.0,mousex,mousey)) {
 			al_draw_text(fuente, al_map_rgb(250, 250, 20), X / 2, (Y * (250.0 / 768.0)), ALLEGRO_ALIGN_CENTRE, "JUGAR");
 			if (eventos.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
+				al_play_sample(SeleccionEffecto, 1.0, 0, 1.0, ALLEGRO_PLAYMODE_ONCE, 0);
 				if (eventos.mouse.button & 1) {
 					al_destroy_sample(musicaFondo);
 					al_destroy_display(pantalla);
@@ -157,18 +111,21 @@ int main() {
 					main();
 				}
 			}
-			
 		}
+
 		//Si se presiona Resultados
-		if (posicionMouse(X, Y, 200, 340.0, 380.0, mousex, mousey)){
+		if (mouse_Range(X, Y, 200, 340.0, 380.0, mousex, mousey)){
 			al_draw_text(fuente, al_map_rgb(250, 250, 20), X / 2, (Y * (350.0 / 768.0)), ALLEGRO_ALIGN_CENTRE, "RESULTADOS");
 			if (eventos.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
+				al_play_sample(SeleccionEffecto, 1.0, 0, 1.0, ALLEGRO_PLAYMODE_ONCE, 0);
 				if (eventos.mouse.button & 1) {
+					gameOver(cola_eventos, titulo, fuente, X, Y);
 				}
 			}
 		}
+
 		//Si se presiona Instrucciones
-		if (posicionMouse(X, Y, 250, 440.0, 480.0, mousex, mousey)){
+		if (mouse_Range(X, Y, 250, 440.0, 480.0, mousex, mousey)){
 			al_draw_text(fuente, al_map_rgb(250, 250, 20), X / 2, (Y * (450.0 / 768.0)), ALLEGRO_ALIGN_CENTRE, "INSTRUCCIONES");
 			if (eventos.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
 				al_play_sample(SeleccionEffecto, 1.0, 0, 1.0, ALLEGRO_PLAYMODE_ONCE, 0);
@@ -179,7 +136,7 @@ int main() {
 		}
 
 		//Si se presiona Salir
-		if (posicionMouse(X, Y, 100, 540.0, 580.0, mousex, mousey)){
+		if (mouse_Range(X, Y, 100, 540.0, 580.0, mousex, mousey)){
 			al_draw_text(fuente, al_map_rgb(250, 250, 20), X / 2, (Y * (550.0 / 768.0)), ALLEGRO_ALIGN_CENTRE, "SALIR");
 			if (eventos.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
 				al_play_sample(SeleccionEffecto, 1.0, 0, 1.0, ALLEGRO_PLAYMODE_ONCE, 0);
@@ -190,13 +147,11 @@ int main() {
 		}
 
 		//Si se presiona la tecla escape se sale del juego
-		if (eventos.type == ALLEGRO_EVENT_KEY_DOWN)
-		{
-			if (ALLEGRO_KEY_ESCAPE) {
+		if (eventos.type == ALLEGRO_EVENT_KEY_UP) {
+			if (eventos.keyboard.keycode == ALLEGRO_KEY_ENTER) {
 				estado = false;
 			}
 		}
-		
 		al_flip_display();
 	}
 	al_destroy_timer(primerTimer);
