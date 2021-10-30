@@ -49,7 +49,7 @@ int main() {
 	ALLEGRO_FONT* fuente = al_load_font("Fuente/ARCADE_N.ttf", 40, NULL);
 
 	//Bitmaps
-	ALLEGRO_BITMAP* fondo = al_load_bitmap("Imagenes/Fondo.png");
+	ALLEGRO_BITMAP* fondo = al_load_bitmap("Imagenes/HUD/Fondo.png");
 
 	//Sonidos
 	ALLEGRO_SAMPLE* SeleccionEffecto = al_load_sample("Sonidos/MENUMOVE.wav");
