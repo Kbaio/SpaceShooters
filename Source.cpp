@@ -147,8 +147,10 @@ int main() {
 		}
 
 		//Si se presiona la tecla escape se sale del juego
-		if (eventos.type == ALLEGRO_EVENT_KEY_UP) {
-			if (eventos.keyboard.keycode == ALLEGRO_KEY_ENTER) {
+		if (eventos.type == ALLEGRO_EVENT_KEY_DOWN)
+		{
+			switch (eventos.keyboard.keycode) {
+			case ALLEGRO_KEY_ESCAPE:
 				estado = false;
 			}
 		}
