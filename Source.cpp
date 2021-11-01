@@ -1,9 +1,9 @@
 #include "Juego.h"
-#include "Funciones.h"
+#include "Funciones.h";
 using namespace std;
 #define FPS 60.0
 
-
+//Programa Principal
 int main() {
 	//Verifica si hubo algun error iniciando allegro
 	if (!al_init()) {
@@ -47,6 +47,7 @@ int main() {
 	//Fuentes
 	ALLEGRO_FONT* titulo = al_load_font("Fuente/ARCADE_I.ttf",80,NULL);
 	ALLEGRO_FONT* fuente = al_load_font("Fuente/ARCADE_N.ttf", 40, NULL);
+	ALLEGRO_FONT* fuente2 = al_load_font("Fuente/ARCADE_N.ttf", 20, NULL);
 
 	//Bitmaps
 	ALLEGRO_BITMAP* fondo = al_load_bitmap("Imagenes/HUD/Fondo.png");
@@ -68,6 +69,7 @@ int main() {
 	int movF = 0;
 	int X = al_get_display_width(pantalla);
 	int Y = al_get_display_height(pantalla);
+	int puntuacion = 0;
 
 	//Se inician los timers
 	al_start_timer(primerTimer);
@@ -92,7 +94,6 @@ int main() {
 				movF--;
 				al_draw_text(titulo, al_map_rgb(250, 15, 15), X / 2, (Y * (150.0 / 768.0)), ALLEGRO_ALIGN_CENTRE, "SPACE SHOOTERS");
 				al_draw_text(fuente, al_map_rgb(250, 250, 250), X / 2, (Y * (250.0 / 768.0)), ALLEGRO_ALIGN_CENTRE, "JUGAR");
-				//al_draw_text(fuente, al_map_rgb(250, 250, 250), X / 2, (EY * (340.0 / 768.0)), ALLEGRO_ALIGN_CENTRE, "DEMO");
 				al_draw_text(fuente, al_map_rgb(250, 250, 250), X / 2, (Y * (350.0 / 768.0)), ALLEGRO_ALIGN_CENTRE, "RESULTADOS"); //410
 				al_draw_text(fuente, al_map_rgb(250, 250, 250), X / 2, (Y * (450.0 / 768.0)), ALLEGRO_ALIGN_CENTRE, "INSTRUCCIONES"); //480
 				al_draw_text(fuente, al_map_rgb(250, 250, 250), X / 2, (Y * (550.0 / 768.0)), ALLEGRO_ALIGN_CENTRE, "SALIR"); //550
@@ -107,8 +108,9 @@ int main() {
 				if (eventos.mouse.button & 1) {
 					al_destroy_sample(musicaFondo);
 					al_destroy_display(pantalla);
-					juego();
+					juego(titulo);
 					main();
+					
 				}
 			}
 		}
@@ -119,7 +121,7 @@ int main() {
 			if (eventos.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
 				al_play_sample(SeleccionEffecto, 1.0, 0, 1.0, ALLEGRO_PLAYMODE_ONCE, 0);
 				if (eventos.mouse.button & 1) {
-					gameOver(cola_eventos, titulo, fuente, X, Y);
+					mostrarEstadisticas(cola_eventos, titulo, fuente, fuente2,fondo, primerTimer, X, Y);
 				}
 			}
 		}

@@ -1,0 +1,20 @@
+Nombre:david
+Puntaje: 166
+
+
+Nombre:BOT
+Puntaje: 11
+
+
+Nombre:rebe
+Puntaje: 276
+
+
+Nombre:Sed
+Puntaje: 333
+
+
+Nombre:dos
+Puntaje: 330
+
+

@@ -8,6 +8,7 @@
 #include <time.h>
 #include <chrono>
 
+
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_ttf.h>
 #include <allegro5/allegro_font.h>
@@ -723,8 +724,97 @@ void DireccionEnemigo2(PtrNave& Lista) {
 	}
 }
 
+//Funciones de Guardado y Game Over
+void guardarArchivo(char* puntaje, char* nombre)
+{
+	FILE* archivo;
+	archivo = fopen("puntuacion.txt", "a");
 
-int juego() {
+	if (NULL == archivo) {
+		fprintf(stderr, "No se pudo crear archivo %s.\n", "resultados.txt");
+		exit(-1);
+	}
+	else {
+		fprintf(archivo, "Nombre:%s\n", nombre);
+		fprintf(archivo, "Puntaje: %s\n", puntaje);
+		fprintf(archivo, "\n\n");
+	}
+	fclose(archivo);
+}
+
+void definirTeclas(ALLEGRO_EVENT_QUEUE* cola_eventos, ALLEGRO_EVENT& eventos, bool& repetir, char nombre[30], int& pos_Caracter) {
+	bool test = false;
+	if (eventos.keyboard.keycode == ALLEGRO_KEY_LEFT || eventos.keyboard.keycode == ALLEGRO_KEY_RIGHT
+		|| eventos.keyboard.keycode == ALLEGRO_KEY_DOWN || eventos.keyboard.keycode == ALLEGRO_KEY_UP
+		|| eventos.keyboard.keycode == ALLEGRO_KEY_DELETE || eventos.keyboard.keycode == ALLEGRO_KEY_HOME
+		|| eventos.keyboard.keycode == ALLEGRO_KEY_TAB || eventos.keyboard.keycode == ALLEGRO_KEY_ESCAPE) {
+	}
+	else if (eventos.keyboard.keycode == ALLEGRO_KEY_ENTER) {
+		repetir = false;
+	}
+	else if (eventos.keyboard.keycode == ALLEGRO_KEY_BACKSPACE) {
+		if (pos_Caracter != 0) {
+			nombre[pos_Caracter] = NULL;
+			pos_Caracter--;
+		}
+	}
+	else if (pos_Caracter != 28) {
+		if (eventos.keyboard.keycode == ALLEGRO_KEY_SPACE) {
+			nombre[pos_Caracter] = char(95);
+			pos_Caracter++;
+		}
+		else {
+			if (eventos.keyboard.unichar != ALLEGRO_KEY_BACKSPACE) {
+				nombre[pos_Caracter] = eventos.keyboard.unichar;
+				pos_Caracter++;
+			}
+		}
+	}
+}
+
+void gameOver(ALLEGRO_EVENT_QUEUE* cola_eventos, ALLEGRO_FONT* titulo, ALLEGRO_FONT* fuente, int X, int Y, int puntuacion) {
+	char puntos[10];
+	char puntostotal[40] = "Puntuacion: ";
+	_itoa(puntuacion, puntos, 10);
+	strcat(puntostotal, puntos);
+	char nombre[30];
+	nombre[0] = char(95);
+	char letra;
+	int pos_Caracter = 0;
+	int contador = 0;
+	int contador2 = 0;
+	bool repetir = true;
+	while (repetir) {
+		ALLEGRO_EVENT eventos;
+		al_wait_for_event(cola_eventos, &eventos);
+		al_clear_to_color(al_map_rgb(0, 0, 0));
+		if (eventos.type == ALLEGRO_EVENT_KEY_CHAR) {
+			definirTeclas(cola_eventos, eventos, repetir, nombre, pos_Caracter);
+		}
+		nombre[pos_Caracter] = '<';
+		nombre[pos_Caracter + 1] = NULL;
+		al_draw_text(titulo, al_map_rgb(255, 0, 0), X / 2, Y / 2 - 300, ALLEGRO_ALIGN_CENTRE, "GAME OVER");
+		al_draw_text(fuente, al_map_rgb(255, 255, 20), X / 2, Y / 2 - 150, ALLEGRO_ALIGN_CENTRE, puntostotal);
+		al_draw_text(fuente, al_map_rgb(255, 255, 255), X / 2, Y / 2, ALLEGRO_ALIGN_CENTRE, nombre);
+		al_draw_text(fuente, al_map_rgb(255, 255, 255), X / 2, Y / 2 + 200, ALLEGRO_ALIGN_CENTRE, "Presione Enter para finalizar");
+		al_draw_text(fuente, al_map_rgb(124, 255, 0), X / 2, Y / 2 - 50, ALLEGRO_ALIGN_CENTRE, "Ingrese su nombre");
+		al_flip_display();
+	}
+	//Se el nombre no es vacio se borra lo que no haya escrito el usuario (como el caracter para ubicar)
+	if (pos_Caracter != 0) {
+		nombre[pos_Caracter] = NULL;
+	}
+	else {//Si el usuario no escribe el nombre so coloca un signo de interrogacion
+		strcpy(nombre, "BOT");
+	}
+	guardarArchivo(puntos, nombre);
+}
+
+
+
+
+
+int juego(ALLEGRO_FONT * titulo) {
 	if (!al_init()) {
 		fprintf(stderr, "No se puede iniciar allegro!\n");
 		return -1;
@@ -741,7 +831,7 @@ int juego() {
 
 	//Esta línea de código permite que la ventana tenga la capacidad de cambiar de tamaño
 	//al_set_new_display_flags(ALLEGRO_WINDOWED | ALLEGRO_RESIZABLE | ALLEGRO_FULLSCREEN);
-	al_set_new_display_flags(ALLEGRO_WINDOWED | ALLEGRO_RESIZABLE);
+	al_set_new_display_flags(ALLEGRO_FULLSCREEN| ALLEGRO_WINDOWED | ALLEGRO_RESIZABLE);
 	pantalla = al_create_display(RX, RY);
 	al_set_window_title(pantalla, "Space Shooters");
 	if (!pantalla) {
@@ -848,13 +938,6 @@ int juego() {
 	int puntuacion = 0;
 	chrono::steady_clock::time_point cooldownAux;
 	chrono::duration<double> time_span;
-
-	//enemigo = iniciarJefe(RX, RY);
-	//AgregarInicioEnemigo(Enemigos, enemigo);
-	//enemigo = crearEnemigo(RX);
-	//AgregarInicioEnemigo(Enemigos, enemigo);
-	//enemigo = crearEnemigo(RX);
-	//AgregarInicioEnemigo(Enemigos, enemigo);
 
 	ALLEGRO_KEYBOARD_STATE estadoTeclado;
 	ALLEGRO_EVENT eventos;
@@ -1034,12 +1117,11 @@ int juego() {
 		switch (eventos.keyboard.keycode) {
 		case ALLEGRO_KEY_ESCAPE:	//ESCAPE para cerrar el programa
 			loop = false;
-			break;
 		}
 		}
 	}
 
-
+	gameOver(colaEventos, titulo, fuente, RX, RY, puntuacion);
 
 	al_destroy_timer(TimerFrames);
 	al_destroy_timer(TimerLiberarMemoria);
@@ -1080,6 +1162,6 @@ int juego() {
 	DestruirBalas(BalasJugador);
 	DestruirBalas(BalasEnemigos);
 	DestruirEnemigos(Enemigos);
-
-	return puntuacion;
+	
+	return 0;
 }
